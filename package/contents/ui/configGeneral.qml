@@ -90,7 +90,42 @@ KCM.SimpleKCM {
             currentIndex: cfg_orientation === "pointy" ? 1 : 0
             onActivated: cfg_orientation = currentIndex === 1 ? "pointy" : "flat"
         }
+RowLayout {
+    Layout.fillWidth: true
+    Layout.bottomMargin: Kirigami.Units.largeSpacing
 
+    // Explicitly align the Title to the left side
+    Kirigami.Heading {
+        text: i18n("General")
+        level: 1
+        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+    }
+
+    // Creates an elastic empty separator space pushes the buttons completely to the far right side
+    Item {
+        Layout.fillWidth: true
+    }
+
+    // Far right container grouping the functional actions
+    RowLayout {
+        spacing: Kirigami.Units.smallSpacing
+        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+
+        PlasmaComponents.Button {
+            text: i18n("Import Config")
+            icon.name: "document-import"
+            display: PlasmaComponents.Button.TextBesideIcon
+            onClicked: importConfigDialog.open()
+        }
+
+        PlasmaComponents.Button {
+            text: i18n("Export Config")
+            icon.name: "document-export"
+            display: PlasmaComponents.Button.TextBesideIcon
+            onClicked: exportConfigDialog.open()
+        }
+    }
+}
         RowLayout {
             Kirigami.FormData.label: i18n("Background image:")
             QtControls.TextField {
