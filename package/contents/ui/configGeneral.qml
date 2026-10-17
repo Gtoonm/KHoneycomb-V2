@@ -354,3 +354,77 @@ KCM.SimpleKCM {
         }
     }
 }
+import QtQuick.Dialogs // Required for FileDialog in Qt6 / Plasma 6
+
+// ... existing code ...
+
+    // --- Export Config Dialog ---
+    FileDialog {
+        id: exportConfigDialog
+        title: i18n("Export KHoneycomb Configuration")
+        fileMode: FileDialog.SaveFile
+        currentFile: "khoneycomb_config.json"
+        nameFilters: ["JSON files (*.json)", "Text files (*.txt)"]
+        
+        onAccepted: {
+            let configDump = {};
+            
+            // 1. Serialize primitive scalar values from plasmoid.configuration
+            let keys = Object.keys(plasmoid.configuration);
+            for (let i = 0; i < keys.length; i++) {
+                let key = keys[i];
+                // Filter out non-serializable QML internal bindings/objects
+                if (typeof plasmoid.configuration[key] !== 'object') {
+                    configDump[key] = plasmoid.configuration[key];
+                }
+            }
+            
+            // 2. Safely capture complex types (e.g., slot array lists if stored as string/JSON)
+            // Note: If slots are directly stringified JSON strings in main.xml, they serialize natively above.
+            
+            // 3. Write data to the local file system using XMLHttpRequest local scheme hack
+            let request = new XMLHttpRequest();
+            request.open("PUT", selectedFile);
+            request.send(JSON.stringify(configDump, null, 4));
+        }
+    }
+
+  
+    FileDialog {
+        id: importConfigDialog
+        title: i18n("Import KHoneycomb Configuration")
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["JSON files (*.json)", "Text files (*.txt)"]
+        
+        onAccepted: {
+            let request = new XMLHttpRequest();
+            request.open("GET", selectedFile);
+            request.onreadystatechange = function() {
+                if (request.readyState === XMLHttpRequest.DONE) {
+                    try {
+                        let parsedData = JSON.parse(request.responseText);
+                        
+                        // Dynamically inject values back into configuration and interactive UI bindings
+                        for (let key in parsedData) {
+                            if (parsedData.hasOwnProperty(key)) {
+                                // Update backend Plasmoid engine values immediately
+                                plasmoid.configuration[key] = parsedData[key];
+                                
+                                // Update UI matching properties ('cfg_' prefix convention) to mirror visually
+                                let uiProperty = "cfg_" + key;
+                                if (root.hasOwnProperty(uiProperty)) {
+                                    root[uiProperty] = parsedData[key];
+                                } else if (typeof [uiProperty] !== 'undefined') {
+                                    // Fallback for settings layouts using direct implicit mapping
+                                    try { root[uiProperty] = parsedData[key]; } catch(e) {}
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse imported KHoneycomb JSON file: ", e);
+                    }
+                }
+            };
+            request.send();
+        }
+    }
